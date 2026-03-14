@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 파쿠르</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #0a0a0a;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 50%, #050510 100%);
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        #deathScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        #deathScreen.show {
+            display: flex;
+        }
+
+        #deathScreen h1 {
+            color: #ff4444;
+            font-size: 72px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255,68,68,0.5);
+        }
+
+        #deathScreen p {
+            color: #fff;
+            font-size: 24px;
+            margin: 10px;
+        }
+
+        #shop {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20,20,40,0.95);
+            padding: 40px;
+            border-radius: 15px;
+            border: 3px solid #4a9eff;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(74,158,255,0.3);
+            min-width: 500px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #shop.show {
+            display: block;
+        }
+        
+        #shopHeader {
+            cursor: move;
+            user-select: none;
+            padding: 10px;
+            margin: -40px -40px 20px -40px;
+            background: rgba(74,158,255,0.2);
+            border-radius: 12px 12px 0 0;
+            border-bottom: 2px solid #4a9eff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #shopHeader h2 {
+            margin: 0;
+        }
+        
+        #shopClose {
+            background: rgba(255,68,68,0.3);
+            border: 2px solid #ff4444;
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        #shopClose:hover {
+            background: rgba(255,68,68,0.6);
+            transform: scale(1.1);
+        }
+
+        #shop h2 {
+            color: #4a9eff;
+            font-size: 32px;
+        }
+
+        .shop-item {
+            background: rgba(30,30,50,0.8);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border: 2px solid #666;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            border-color: #4a9eff;
+            transform: scale(1.05);
+        }
+
+        .shop-item.owned {
+            border-color: #44ff44;
+            background: rgba(30,50,30,0.8);
+        }
+
+        .shop-item h3 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .shop-item p {
+            color: #aaa;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .shop-item .price {
+            color: #ffdd44;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #itemBar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .item-button {
+            background: rgba(30,30,50,0.9);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid #666;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .item-button.active {
+            border-color: #44ff44;
+            box-shadow: 0 0 15px rgba(68,255,68,0.5);
+        }
+
+        .item-button.cooldown {
+            border-color: #ff4444;
+            opacity: 0.5;
+        }
+
+        .item-button:hover:not(.cooldown) {
+            border-color: #4a9eff;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            text-align: right;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        #controls div {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>거리: <span id="distance">0</span>M</div>
+        <div>높이: <span id="height">0</span>M</div>
+        <div>골드: <span id="gold">0</span>G</div>
+        <div>HP: <span id="hp">100</span></div>
+        <div id="grappleStatus" style="color: #888; margin-top: 10px;"></div>
+    </div>
+
+    <div id="controls">
+        <div><strong>조작법</strong></div>
+        <div>A/D: 좌우 이동 (가속)</div>
+        <div>SPACE: 점프 (점프 시 A/D로 방향 제어)</div>
+        <div>Q: 슬라이딩</div>
+        <div>Shift (공중): 낙법 (낙하 데미지 90% 감소)</div>
+        <div>W (벽타기): 벽 타고 올라가기</div>
+        <div>SPACE (벽타기): 벽점프로 탈출</div>
+        <div style="color: #ffdd44; margin-top: 5px;"><strong>기어</strong></div>
+        <div>F: 사슬팔 기어 (1000G)</div>
+        <div>├ 클릭: 발사</div>
+        <div>└ Shift: 버스트</div>
+        <div>G: 그래비티 컨트롤러 (3000G)</div>
+        <div>├ 홀드: 중력 100배 증가</div>
+        <div>└ 줄 근처: 줄 매달리기</div>
+        <div>H: 폭발 점퍼 (4000G)</div>
+        <div style="color: #4a9eff; margin-top: 5px;"><strong>소모품</strong></div>
+        <div>1: 스피드 부스트 (5000G)</div>
+        <div>2: 제트 부스터 (8000G)</div>
+        <div style="margin-top: 5px;">ESC: 상점/종료 | R: 재시작</div>
+    </div>
+
+    <div id="itemBar"></div>
+
+    <div id="deathScreen">
+        <h1>RETRY?</h1>
+        <p>거리: <span id="finalDistance">0</span>M</p>
+        <p>획득 골드: <span id="earnedGold">0</span>G</p>
+        <p style="margin-top: 20px;">R 키로 재시작</p>
+        <p>ESC 키로 종료</p>
+    </div>
+
+    <div id="shop">
+        <div id="shopHeader">
+            <h2>🛒 상점</h2>
+            <button id="shopClose">✕ 닫기</button>
+        </div>
+        <div id="shopItems"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 게임 상태
+        const game = {
+            distance: 0,
+            gold: 0,
+            hp: 100,
+            isDead: false,
+            isPaused: false,
+            camera: { 
+                x: 0, 
+                y: 0,
+                targetX: 0,
+                targetY: 0,
+                smoothness: 0.1
+            },
+            keys: {},
+            lastCheckpoint: 0,
+            segments: [],
+            particles: [],
+            groundLevel: 600 // 기준 높이 (지면)
+        };
+        
+        // 파티클 클래스
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2; // 중력
+                this.life--;
+            }
+            
+            draw(ctx) {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color.replace('1)', alpha + ')');
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        // 플레이어
+        const player = {
+            x: 200,
+            y: 300,
+            width: 30,
+            height: 30,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            jumpPower: 15,
+            gravity: 0.6,
+            maxFallSpeed: 20,
+            maxHorizontalSpeed: 12,
+            airControl: 0.3,
+            friction: 0.92,
+            airFriction: 0.98,
+            isGrounded: false,
+            isOnWall: false,
+            wallSide: null,
+            isSliding: false,
+            isOnRope: false,
+            currentRope: null,
+            isFalling: false,
+            fallDistance: 0,
+            lastY: 300,
+            canDoubleJump: false,
+            hasDoubleJumped: false,
+            // 낙법
+            isRolling: false,
+            rollTimer: 0,
+            // 사슬팔
+            grappleMode: false,
+            grappleActive: false,
+            grappleX: 0,
+            grappleY: 0,
+            grappleTargetX: 0,
+            grappleTargetY: 0,
+            grappleLength: 0,
+            grappleMaxLength: 500,
+            // 그래비티 컨트롤러
+            usingGravityController: false
+        };
+
+        // 아이템 시스템
+        const items = {
+            speedBoost: {
+                name: '스피드 부스트',
+                price: 5000,
+                owned: false,
+                active: false,
+                duration: 15000,
+                cooldown: 15000,
+                lastUsed: 0,
+                activeUntil: 0,
+                halfLifeUntil: 0,
+                description: '15초간 속도 2배, 점프력 1.5배\n5초 반감기 (속도 0.75배, 점프력 0.5배)\n쿨타임: 15초'
+            },
+            jetBooster: {
+                name: '제트 부스터',
+                price: 8000,
+                owned: false,
+                active: false,
+                duration: 2000,
+                cooldown: 3000,
+                lastUsed: 0,
+                activeUntil: 0,
+                description: '2초간 자유롭게 비행\n쿨타임: 3초'
+            },
+            grappleGear: {
+                name: '사슬팔 기어',
+                price: 1000,
+                owned: false,
+                active: false,
+                duration: 0,
+                cooldown: 0,
+                lastUsed: 0,
+                activeUntil: 0,
+                description: 'F키로 모드 전환\n마우스 클릭으로 발사\nShift로 버스트 이동\n최대 사정거리: 500'
+            },
+            explosiveJumper: {
+                name: '폭발 점퍼',
+                price: 4000,
+                owned: false,
+                active: false,
+                duration: 0,
+                cooldown: 0,
+                lastUsed: 0,
+                activeUntil: 0,
+                description: 'H 키로 폭발 점프\n쿨타임 없이 무제한 사용 가능\n강력한 점프력 제공'
+            },
+            gravityController: {
+                name: '그래비티 컨트롤러',
+                price: 3000,
+                owned: false,
+                active: false,
+                duration: 0,
+                cooldown: 0,
+                lastUsed: 0,
+                activeUntil: 0,
+                description: 'G 키 홀드로 중력 100배 증가\n순간적으로 빠르게 낙하\n사용 중 낙하 데미지 무효화\n쿨타임 없음'
+            }
+        };
+
+        // 레벨 세그먼트 템플릿
+        const segmentTemplates = [
+            // 기본 플랫폼
+            {
+                platforms: [
+                    { x: 0, y: 500, width: 300, height: 30 },
+                    { x: 400, y: 450, width: 200, height: 30 },
+                    { x: 700, y: 400, width: 250, height: 30 },
+                    { x: 1050, y: 500, width: 300, height: 30 },
+                    { x: 1450, y: 550, width: 200, height: 30 },
+                    { x: 1750, y: 450, width: 250, height: 30 }
+                ],
+                walls: [
+                    { x: 600, y: 200, width: 30, height: 250 },
+                    { x: 1350, y: 250, width: 30, height: 300 }
+                ],
+                ropes: [
+                    { x: 950, y: 100, length: 300 }
+                ]
+            },
+            // 높은 점프
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 250, height: 30 },
+                    { x: 350, y: 350, width: 150, height: 30 },
+                    { x: 600, y: 200, width: 200, height: 30 },
+                    { x: 900, y: 350, width: 150, height: 30 },
+                    { x: 1150, y: 500, width: 250, height: 30 },
+                    { x: 1500, y: 400, width: 200, height: 30 },
+                    { x: 1800, y: 550, width: 200, height: 30 }
+                ],
+                walls: [
+                    { x: 800, y: 50, width: 30, height: 300 }
+                ],
+                ropes: [
+                    { x: 1400, y: 50, length: 350 }
+                ]
+            },
+            // 벽타기 중심
+            {
+                platforms: [
+                    { x: 0, y: 600, width: 200, height: 30 },
+                    { x: 500, y: 550, width: 200, height: 30 },
+                    { x: 1000, y: 500, width: 200, height: 30 },
+                    { x: 1500, y: 450, width: 200, height: 30 },
+                    { x: 1800, y: 600, width: 200, height: 30 }
+                ],
+                walls: [
+                    { x: 300, y: 200, width: 30, height: 400 },
+                    { x: 700, y: 150, width: 30, height: 400 },
+                    { x: 1200, y: 100, width: 30, height: 400 },
+                    { x: 1700, y: 150, width: 30, height: 450 }
+                ],
+                ropes: []
+            },
+            // 줄 매달리기
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 250, height: 30 },
+                    { x: 800, y: 500, width: 200, height: 30 },
+                    { x: 1500, y: 450, width: 250, height: 30 },
+                    { x: 1900, y: 550, width: 150, height: 30 }
+                ],
+                walls: [],
+                ropes: [
+                    { x: 350, y: 50, length: 400 },
+                    { x: 550, y: 100, length: 350 },
+                    { x: 1050, y: 80, length: 380 },
+                    { x: 1300, y: 50, length: 400 }
+                ]
+            },
+            // 혼합 챌린지
+            {
+                platforms: [
+                    { x: 0, y: 500, width: 200, height: 30 },
+                    { x: 300, y: 400, width: 150, height: 30 },
+                    { x: 700, y: 550, width: 150, height: 30 },
+                    { x: 1100, y: 350, width: 200, height: 30 },
+                    { x: 1500, y: 500, width: 200, height: 30 },
+                    { x: 1850, y: 450, width: 150, height: 30 }
+                ],
+                walls: [
+                    { x: 550, y: 150, width: 30, height: 400 },
+                    { x: 1400, y: 200, width: 30, height: 300 }
+                ],
+                ropes: [
+                    { x: 950, y: 100, length: 350 }
+                ]
+            }
+        ];
+
+        // 세그먼트 생성
+        function generateSegment(startX) {
+            const template = segmentTemplates[Math.floor(Math.random() * segmentTemplates.length)];
+            const segment = {
+                startX: startX,
+                endX: startX + 2000,
+                platforms: template.platforms.map(p => ({
+                    x: p.x + startX,
+                    y: p.y,
+                    width: p.width,
+                    height: p.height
+                })),
+                walls: template.walls.map(w => ({
+                    x: w.x + startX,
+                    y: w.y,
+                    width: w.width,
+                    height: w.height
+                })),
+                ropes: template.ropes.map(r => ({
+                    x: r.x + startX,
+                    y: r.y,
+                    length: r.length
+                }))
+            };
+            return segment;
+        }
+
+        // 초기 세그먼트 생성
+        game.segments.push(generateSegment(0));
+        game.segments.push(generateSegment(2000));
+        game.segments.push(generateSegment(4000));
+
+        // 마우스 위치 추적
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left + game.camera.x;
+            mouseY = e.clientY - rect.top + game.camera.y;
+        });
+        
+        // 마우스 클릭 (사슬팔 발사)
+        canvas.addEventListener('mousedown', (e) => {
+            if (!game.isDead && !game.isPaused && items.grappleGear.owned && player.grappleMode && !player.grappleActive) {
+                const rect = canvas.getBoundingClientRect();
+                player.grappleTargetX = e.clientX - rect.left + game.camera.x;
+                player.grappleTargetY = e.clientY - rect.top + game.camera.y;
+                
+                const dx = player.grappleTargetX - (player.x + player.width / 2);
+                const dy = player.grappleTargetY - (player.y + player.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance <= player.grappleMaxLength) {
+                    player.grappleActive = true;
+                    player.grappleX = player.x + player.width / 2;
+                    player.grappleY = player.y + player.height / 2;
+                }
+            }
+        });
+        
+        // 키 입력
+        document.addEventListener('keydown', (e) => {
+            game.keys[e.key.toLowerCase()] = true;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (!game.isDead && !game.isPaused) {
+                    // 지상에서 점프
+                    if (player.isGrounded && !player.isSliding) {
+                        player.vy = -player.jumpPower * getJumpMultiplier();
+                        
+                        // 점프 순간에만 방향키 입력에 따라 수평 속도 설정
+                        if (game.keys['a']) {
+                            player.vx = -player.speed * getSpeedMultiplier() * 1.2;
+                        } else if (game.keys['d']) {
+                            player.vx = player.speed * getSpeedMultiplier() * 1.5;
+                        } else {
+                            player.vx = player.speed * getSpeedMultiplier();
+                        }
+                        
+                        player.isGrounded = false;
+                        player.hasDoubleJumped = false;
+                    }
+                    // 벽에서 점프 (벽 킥)
+                    else if (player.isOnWall && !player.isGrounded) {
+                        player.vy = -player.jumpPower * getJumpMultiplier() * 0.9;
+                        // 벽 반대 방향으로 밀어내기
+                        player.vx = player.wallSide === 'left' ? 8 : -8;
+                        player.isOnWall = false;
+                    }
+                }
+            }
+            
+            if (e.key.toLowerCase() === 'q' && !game.isDead && !game.isPaused) {
+                player.isSliding = true;
+            }
+            
+            // Shift - 낙법 또는 사슬팔 버스트
+            if (e.key === 'Shift' && !game.isDead && !game.isPaused) {
+                // 사슬팔 버스트 (우선)
+                if (items.grappleGear.owned && player.grappleActive) {
+                    const dx = player.grappleTargetX - (player.x + player.width / 2);
+                    const dy = player.grappleTargetY - (player.y + player.height / 2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 0) {
+                        player.vx = (dx / distance) * 20; // 강한 추진력
+                        player.vy = (dy / distance) * 20;
+                    }
+                    
+                    player.grappleActive = false;
+                }
+                // 낙법
+                else if (!player.isGrounded) {
+                    player.isRolling = true;
+                    player.rollTimer = 30; // 30프레임 동안 낙법 효과
+                }
+            }
+            
+            // F - 사슬팔 모드 토글 (기어 소유 시에만)
+            if (e.key.toLowerCase() === 'f' && !game.isDead && !game.isPaused && items.grappleGear.owned) {
+                player.grappleMode = !player.grappleMode;
+                if (!player.grappleMode) {
+                    player.grappleActive = false;
+                }
+            }
+            
+            // H - 폭발 점퍼 (기어 소유 시에만)
+            if (e.key.toLowerCase() === 'h' && !game.isDead && !game.isPaused && items.explosiveJumper.owned) {
+                // 쿨타임 없이 무제한 사용
+                items.explosiveJumper.lastUsed = Date.now();
+                
+                // 강력한 점프
+                player.vy = -player.jumpPower * 2.5;
+                
+                // 폭발 파티클
+                for (let i = 0; i < 30; i++) {
+                    const angle = (Math.PI * 2 * i) / 30;
+                    game.particles.push(new Particle(
+                        player.x + player.width / 2,
+                        player.y + player.height,
+                        Math.cos(angle) * 8,
+                        Math.sin(angle) * 8 - 3,
+                        'rgba(255, 150, 0, 1)',
+                        3 + Math.random() * 2,
+                        30
+                    ));
+                }
+                
+                player.isGrounded = false;
+            }
+            
+            if (e.key.toLowerCase() === 'r') {
+                if (game.isDead) {
+                    resetGame();
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                if (game.isDead) {
+                    location.reload();
+                } else {
+                    game.isPaused = !game.isPaused;
+                    document.getElementById('shop').classList.toggle('show');
+                }
+            }
+
+            // 아이템 사용
+            if (e.key === '1' && items.speedBoost.owned) {
+                useItem('speedBoost');
+            }
+            if (e.key === '2' && items.jetBooster.owned) {
+                useItem('jetBooster');
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            game.keys[e.key.toLowerCase()] = false;
+            
+            if (e.key.toLowerCase() === 'q') {
+                player.isSliding = false;
+            }
+        });
+
+        // 아이템 사용
+        function useItem(itemKey) {
+            const item = items[itemKey];
+            const now = Date.now();
+            
+            if (item.active || now - item.lastUsed < item.cooldown + item.duration) {
+                return;
+            }
+            
+            item.active = true;
+            item.lastUsed = now;
+            item.activeUntil = now + item.duration;
+            
+            if (itemKey === 'speedBoost') {
+                item.halfLifeUntil = item.activeUntil + 5000;
+            }
+        }
+
+        // 속도 배율
+        function getSpeedMultiplier() {
+            const now = Date.now();
+            if (items.speedBoost.active && now < items.speedBoost.activeUntil) {
+                return 2;
+            } else if (now < items.speedBoost.halfLifeUntil) {
+                return 0.75;
+            }
+            return 1;
+        }
+
+        // 점프력 배율
+        function getJumpMultiplier() {
+            const now = Date.now();
+            if (items.speedBoost.active && now < items.speedBoost.activeUntil) {
+                return 1.5;
+            } else if (now < items.speedBoost.halfLifeUntil) {
+                return 0.5;
+            }
+            return 1;
+        }
+
+        // 물리 업데이트
+        function updatePhysics() {
+            if (game.isDead || game.isPaused) return;
+
+            const now = Date.now();
+            
+            // 아이템 효과 업데이트
+            if (items.speedBoost.active && now >= items.speedBoost.activeUntil) {
+                items.speedBoost.active = false;
+            }
+            if (items.jetBooster.active && now >= items.jetBooster.activeUntil) {
+                items.jetBooster.active = false;
+            }
+
+            // 제트 부스터 사용 중 (시간은 계속 흐름)
+            if (items.jetBooster.active) {
+                player.vx = 0;
+                player.vy = 0;
+                
+                if (game.keys['w']) player.vy = -8;
+                if (game.keys['s']) player.vy = 8;
+                if (game.keys['a']) player.vx = -8;
+                if (game.keys['d']) player.vx = 8;
+                
+                player.x += player.vx;
+                player.y += player.vy;
+                player.isGrounded = false;
+                player.isOnWall = false;
+                player.isOnRope = false;
+                player.grappleActive = false; // 제트팩 중에는 사슬팔 취소
+                
+                // 제트팩 파티클
+                if (Math.random() > 0.5) {
+                    game.particles.push(new Particle(
+                        player.x + player.width / 2,
+                        player.y + player.height,
+                        (Math.random() - 0.5) * 3,
+                        Math.random() * 5,
+                        'rgba(255, 102, 0, 1)',
+                        3,
+                        15
+                    ));
+                }
+                
+                // 제트팩 사용 중에도 거리 계산 및 세그먼트 관리
+                game.distance = Math.floor(player.x / 10);
+                
+                if (player.x > game.lastCheckpoint + 2000) {
+                    game.lastCheckpoint += 2000;
+                    game.gold += 2000;
+                    game.segments = game.segments.filter(s => s.endX > player.x - 1000);
+                    const lastSegment = game.segments[game.segments.length - 1];
+                    game.segments.push(generateSegment(lastSegment.endX));
+                }
+                
+                // 카메라 업데이트
+                game.camera.targetX = player.x - canvas.width / 3;
+                game.camera.targetY = player.y - canvas.height / 2;
+                game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothness;
+                game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothness;
+                
+                return;
+            }
+            
+            // 사슬팔 물리
+            if (player.grappleActive) {
+                const dx = player.grappleTargetX - (player.x + player.width / 2);
+                const dy = player.grappleTargetY - (player.y + player.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 10) {
+                    // 사슬팔로 당겨지는 힘
+                    const pullForce = 1.5;
+                    player.vx += (dx / distance) * pullForce;
+                    player.vy += (dy / distance) * pullForce;
+                    
+                    // 속도 제한
+                    const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+                    if (speed > 15) {
+                        player.vx = (player.vx / speed) * 15;
+                        player.vy = (player.vy / speed) * 15;
+                    }
+                    
+                    // 사슬팔 파티클
+                    if (Math.random() > 0.7) {
+                        game.particles.push(new Particle(
+                            player.x + player.width / 2,
+                            player.y + player.height / 2,
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2,
+                            'rgba(150, 150, 150, 1)',
+                            2,
+                            15
+                        ));
+                    }
+                } else {
+                    // 목표 지점에 도달하면 사슬팔 해제
+                    player.grappleActive = false;
+                }
+                
+                player.x += player.vx;
+                player.y += player.vy;
+                
+                // 공기 저항
+                player.vx *= 0.98;
+                player.vy *= 0.98;
+                
+                // 사슬팔 중에도 거리 계산
+                game.distance = Math.floor(player.x / 10);
+                
+                if (player.x > game.lastCheckpoint + 2000) {
+                    game.lastCheckpoint += 2000;
+                    game.gold += 2000;
+                    game.segments = game.segments.filter(s => s.endX > player.x - 1000);
+                    const lastSegment = game.segments[game.segments.length - 1];
+                    game.segments.push(generateSegment(lastSegment.endX));
+                }
+                
+                // 카메라 업데이트
+                game.camera.targetX = player.x - canvas.width / 3;
+                game.camera.targetY = player.y - canvas.height / 2;
+                game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothness;
+                game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothness;
+                
+                // 충돌 체크 (벽에 부딪히면 해제)
+                player.isGrounded = false;
+                player.isOnWall = false;
+                checkCollisions();
+                checkWallContact();
+                
+                if (player.isGrounded || player.isOnWall) {
+                    player.grappleActive = false;
+                }
+                
+                return;
+            }
+            
+            // 낙법 타이머 감소
+            if (player.rollTimer > 0) {
+                player.rollTimer--;
+            }
+
+            // 줄 매달리기 (그래비티 컨트롤러가 없을 때) 또는 근처에 줄이 있을 때
+            if (game.keys['g'] && !player.isOnWall && !player.isGrounded) {
+                const nearbyRope = findNearbyRope();
+                
+                // 그래비티 컨트롤러가 있으면서 줄이 없으면 중력 증가 모드
+                if (items.gravityController.owned && !nearbyRope) {
+                    player.usingGravityController = true; // 그래비티 컨트롤러 사용 중
+                    
+                    // 중력 100배 증가 (빠른 낙하)
+                    player.vy += player.gravity * 100;
+                    
+                    // 최대 낙하 속도 증가
+                    if (player.vy > player.maxFallSpeed * 3) {
+                        player.vy = player.maxFallSpeed * 3;
+                    }
+                    
+                    // 그래비티 파티클
+                    if (Math.random() > 0.6) {
+                        game.particles.push(new Particle(
+                            player.x + player.width / 2 + (Math.random() - 0.5) * player.width,
+                            player.y + player.height / 2,
+                            (Math.random() - 0.5) * 2,
+                            Math.random() * 3,
+                            'rgba(150, 100, 255, 1)',
+                            2,
+                            15
+                        ));
+                    }
+                }
+                // 줄이 있으면 줄 매달리기
+                else if (nearbyRope) {
+                    player.isOnRope = true;
+                    player.currentRope = nearbyRope;
+                    player.vx = 0;
+                    player.vy = 0;
+                    player.x = nearbyRope.x - player.width / 2;
+                    
+                    if (game.keys['w']) player.vy = -5;
+                    if (game.keys['s']) player.vy = 5;
+                    
+                    player.y += player.vy;
+                    
+                    const minY = nearbyRope.y;
+                    const maxY = nearbyRope.y + nearbyRope.length - player.height;
+                    player.y = Math.max(minY, Math.min(maxY, player.y));
+                    
+                    // 줄 매달리기 중에도 거리 계산
+                    game.distance = Math.floor(player.x / 10);
+                    
+                    // 카메라 업데이트
+                    game.camera.targetX = player.x - canvas.width / 3;
+                    game.camera.targetY = player.y - canvas.height / 2;
+                    game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothness;
+                    game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothness;
+                    
+                    return;
+                }
+            } else {
+                player.isOnRope = false;
+                player.currentRope = null;
+                // G 키를 떼어도 착지 전까지는 그래비티 컨트롤러 플래그 유지 (착지에서 리셋됨)
+            }
+
+            // 벽타기 (중력 적용, 제한된 행동)
+            if (player.isOnWall && !player.isGrounded) {
+                // 벽타기 중에는 W키로 위로만 이동 가능
+                player.vx = 0;
+                
+                // 벽타기 중 중력 적용 (느린 하강)
+                player.vy += player.gravity * 0.3; // 30% 중력
+                
+                // 위로 올라가기 (W키)
+                if (game.keys['w']) {
+                    player.vy = -4; // 벽 타고 올라가는 속도
+                }
+                
+                // 최대 하강 속도 제한
+                if (player.vy > 3) {
+                    player.vy = 3;
+                }
+                
+                player.y += player.vy;
+                
+                // 벽과의 접촉 유지 확인
+                checkWallContact();
+                
+                // 벽에서 떨어졌으면 일반 물리로 전환
+                if (!player.isOnWall) {
+                    // 벽에서 떨어질 때 약간의 수평 속도
+                    player.vx = player.wallSide === 'left' ? -2 : 2;
+                }
+                
+                // 벽타기 중에도 거리 계산 및 세그먼트 관리
+                game.distance = Math.floor(player.x / 10);
+                
+                if (player.x > game.lastCheckpoint + 2000) {
+                    game.lastCheckpoint += 2000;
+                    game.gold += 2000;
+                    game.segments = game.segments.filter(s => s.endX > player.x - 1000);
+                    const lastSegment = game.segments[game.segments.length - 1];
+                    game.segments.push(generateSegment(lastSegment.endX));
+                }
+                
+                // 카메라 업데이트
+                game.camera.targetX = player.x - canvas.width / 3;
+                game.camera.targetY = player.y - canvas.height / 2;
+                game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothness;
+                game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothness;
+                
+                return;
+            }
+
+            // 수평 이동 처리
+            if (player.isGrounded) {
+                // 지상에서의 이동 - A/D 키로 가속
+                const acceleration = 0.8 * getSpeedMultiplier();
+                
+                if (game.keys['a']) {
+                    player.vx -= acceleration;
+                } else if (game.keys['d']) {
+                    player.vx += acceleration;
+                }
+                
+                // 슬라이딩
+                if (player.isSliding) {
+                    player.vx *= 1.05; // 슬라이딩 시 가속
+                    player.height = 15;
+                } else {
+                    player.height = 30;
+                }
+                
+                // 지상 마찰력 적용 (관성 유지하되 점진적 감속)
+                player.vx *= player.friction;
+                
+                // 최대 속도 제한
+                if (player.vx > player.maxHorizontalSpeed * getSpeedMultiplier()) {
+                    player.vx = player.maxHorizontalSpeed * getSpeedMultiplier();
+                } else if (player.vx < -player.maxHorizontalSpeed * getSpeedMultiplier()) {
+                    player.vx = -player.maxHorizontalSpeed * getSpeedMultiplier();
+                }
+                
+                // 거의 정지 상태면 완전히 멈춤
+                if (Math.abs(player.vx) < 0.1 && !game.keys['a'] && !game.keys['d']) {
+                    player.vx = 0;
+                }
+            } else {
+                // 공중에서는 관성만 유지 (아주 약한 공기 저항)
+                player.vx *= player.airFriction;
+                
+                // 공중에서 약간의 제어 (미세 조정만 가능)
+                if (game.keys['a']) {
+                    player.vx -= 0.3 * getSpeedMultiplier();
+                } else if (game.keys['d']) {
+                    player.vx += 0.3 * getSpeedMultiplier();
+                }
+                
+                // 공중 최대 속도 제한
+                if (player.vx > player.maxHorizontalSpeed * 1.2) {
+                    player.vx = player.maxHorizontalSpeed * 1.2;
+                } else if (player.vx < -player.maxHorizontalSpeed * 1.2) {
+                    player.vx = -player.maxHorizontalSpeed * 1.2;
+                }
+            }
+
+            // 중력 적용 (항상)
+            if (!player.isOnWall && !player.isOnRope) {
+                // 상승 중일 때는 중력을 더 강하게
+                if (player.vy < 0) {
+                    player.vy += player.gravity * 1.2;
+                } else {
+                    player.vy += player.gravity;
+                }
+                
+                // 최대 낙하 속도 제한
+                if (player.vy > player.maxFallSpeed) {
+                    player.vy = player.maxFallSpeed;
+                }
+            } else if (player.isGrounded) {
+                // 지상에서는 수직 속도 0
+                player.vy = 0;
+            }
+
+            // 위치 업데이트
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // 파티클 효과
+            // 속도 트레일
+            if (Math.abs(player.vx) > 3 && !player.isGrounded) {
+                game.particles.push(new Particle(
+                    player.x + player.width / 2,
+                    player.y + player.height / 2,
+                    -player.vx * 0.3 + (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    items.speedBoost.active ? 'rgba(0, 255, 0, 1)' : 'rgba(74, 158, 255, 1)',
+                    3,
+                    20
+                ));
+            }
+            
+            // 슬라이딩 먼지
+            if (player.isSliding && Math.random() > 0.7) {
+                game.particles.push(new Particle(
+                    player.x + Math.random() * player.width,
+                    player.y + player.height,
+                    -player.vx * 0.5 + (Math.random() - 0.5) * 3,
+                    -Math.random() * 3,
+                    'rgba(150, 150, 150, 1)',
+                    2,
+                    15
+                ));
+            }
+            
+            // 파티클 업데이트
+            game.particles.forEach(p => p.update());
+            game.particles = game.particles.filter(p => p.life > 0);
+
+            // 낙하 거리 계산
+            if (player.y > player.lastY && !player.isGrounded) {
+                player.fallDistance += player.y - player.lastY;
+            } else if (player.isGrounded) {
+                // 착지 시 낙법 데미지 계산
+                if (player.fallDistance > 100) {
+                    let damageMultiplier = 0.25; // 기본 75% 감소
+                    
+                    // 그래비티 컨트롤러 사용 중이었으면 낙뎀 무효화
+                    if (player.usingGravityController && items.gravityController.owned) {
+                        damageMultiplier = 0;
+                        // 그래비티 컨트롤러 착지 파티클
+                        for (let i = 0; i < 20; i++) {
+                            game.particles.push(new Particle(
+                                player.x + player.width / 2 + (Math.random() - 0.5) * player.width * 2,
+                                player.y + player.height,
+                                (Math.random() - 0.5) * 10,
+                                -Math.random() * 6,
+                                'rgba(150, 100, 255, 1)',
+                                3,
+                                30
+                            ));
+                        }
+                    }
+                    // 낙법 사용 시 추가 감소 (총 90% 감소)
+                    else if (player.rollTimer > 0) {
+                        damageMultiplier = 0.1;
+                        // 낙법 성공 파티클
+                        for (let i = 0; i < 15; i++) {
+                            game.particles.push(new Particle(
+                                player.x + player.width / 2,
+                                player.y + player.height / 2,
+                                (Math.random() - 0.5) * 8,
+                                -Math.random() * 5,
+                                'rgba(100, 255, 100, 1)',
+                                3,
+                                25
+                            ));
+                        }
+                    }
+                    
+                    const damage = Math.floor((player.fallDistance - 100) / 10) * damageMultiplier;
+                    game.hp -= damage;
+                    if (game.hp <= 0) die();
+                }
+                
+                // 착지 파티클
+                if (player.fallDistance > 50) {
+                    for (let i = 0; i < 10; i++) {
+                        game.particles.push(new Particle(
+                            player.x + player.width / 2 + (Math.random() - 0.5) * player.width,
+                            player.y + player.height,
+                            (Math.random() - 0.5) * 6,
+                            -Math.random() * 4,
+                            'rgba(200, 200, 200, 1)',
+                            2 + Math.random() * 2,
+                            20 + Math.random() * 10
+                        ));
+                    }
+                }
+                
+                player.fallDistance = 0;
+                player.rollTimer = 0; // 착지 시 낙법 타이머 리셋
+                player.usingGravityController = false; // 착지 후 그래비티 컨트롤러 리셋
+            }
+            player.lastY = player.y;
+
+            // 충돌 체크 (이전 상태 초기화)
+            player.isGrounded = false;
+            player.isOnWall = false;
+            
+            checkCollisions();
+            checkWallContact();
+
+            // 화면 밖으로 떨어짐
+            if (player.y > canvas.height + 100) {
+                die();
+            }
+
+            // 거리 계산
+            game.distance = Math.floor(player.x / 10);
+            
+            // 새 세그먼트 생성
+            if (player.x > game.lastCheckpoint + 2000) {
+                game.lastCheckpoint += 2000;
+                game.gold += 2000;
+                
+                // 오래된 세그먼트 제거
+                game.segments = game.segments.filter(s => s.endX > player.x - 1000);
+                
+                // 새 세그먼트 추가
+                const lastSegment = game.segments[game.segments.length - 1];
+                game.segments.push(generateSegment(lastSegment.endX));
+            }
+
+            // 부드러운 카메라 이동
+            game.camera.targetX = player.x - canvas.width / 3;
+            game.camera.targetY = player.y - canvas.height / 2;
+            
+            // 카메라 보간 (lerp)
+            game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothness;
+            game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothness;
+        }
+
+        // 충돌 체크
+        function checkCollisions() {
+            for (const segment of game.segments) {
+                for (const platform of segment.platforms) {
+                    // 플레이어가 플랫폼과 겹치는지 확인
+                    if (player.x + player.width > platform.x &&
+                        player.x < platform.x + platform.width &&
+                        player.y + player.height > platform.y &&
+                        player.y < platform.y + platform.height) {
+                        
+                        // 위에서 떨어질 때만 착지
+                        if (player.vy >= 0 && player.y + player.height - player.vy <= platform.y + 5) {
+                            player.y = platform.y - player.height;
+                            player.vy = 0;
+                            player.isGrounded = true;
+                        }
+                        // 아래에서 부딪힐 때
+                        else if (player.vy < 0 && player.y - player.vy >= platform.y + platform.height) {
+                            player.y = platform.y + platform.height;
+                            player.vy = 0;
+                        }
+                        // 옆에서 부딪힐 때
+                        else {
+                            if (player.vx > 0) {
+                                player.x = platform.x - player.width;
+                            } else if (player.vx < 0) {
+                                player.x = platform.x + platform.width;
+                            }
+                            player.vx = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 벽 접촉 체크
+        function checkWallContact() {
+            for (const segment of game.segments) {
+                for (const wall of segment.walls) {
+                    if (player.x + player.width > wall.x &&
+                        player.x < wall.x + wall.width &&
+                        player.y + player.height > wall.y &&
+                        player.y < wall.y + wall.height) {
+                        
+                        player.isOnWall = true;
+                        player.wallSide = (player.x + player.width / 2 < wall.x + wall.width / 2) ? 'left' : 'right';
+                        
+                        // 벽 안으로 들어가지 않게
+                        if (player.wallSide === 'left') {
+                            player.x = wall.x - player.width;
+                        } else {
+                            player.x = wall.x + wall.width;
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 근처 줄 찾기
+        function findNearbyRope() {
+            for (const segment of game.segments) {
+                for (const rope of segment.ropes) {
+                    const dist = Math.abs(player.x + player.width / 2 - rope.x);
+                    if (dist < 50 && player.y >= rope.y && player.y <= rope.y + rope.length) {
+                        return rope;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 사망
+        function die() {
+            game.isDead = true;
+            document.getElementById('deathScreen').classList.add('show');
+            document.getElementById('finalDistance').textContent = game.distance;
+            document.getElementById('earnedGold').textContent = game.gold;
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            player.x = 200;
+            player.y = 300;
+            player.vx = 0;
+            player.vy = 0;
+            player.isGrounded = false;
+            player.isOnWall = false;
+            player.isSliding = false;
+            player.isOnRope = false;
+            player.fallDistance = 0;
+            player.lastY = 300;
+            player.height = 30;
+            player.isRolling = false;
+            player.rollTimer = 0;
+            player.grappleMode = false;
+            player.grappleActive = false;
+            player.usingGravityController = false;
+            
+            game.distance = 0;
+            game.hp = 100;
+            game.isDead = false;
+            game.camera.x = 0;
+            game.camera.y = 0;
+            game.camera.targetX = 0;
+            game.camera.targetY = 0;
+            game.lastCheckpoint = 0;
+            game.particles = [];
+            
+            // 세그먼트 재생성
+            game.segments = [];
+            game.segments.push(generateSegment(0));
+            game.segments.push(generateSegment(2000));
+            game.segments.push(generateSegment(4000));
+            
+            document.getElementById('deathScreen').classList.remove('show');
+        }
+
+        // 렌더링
+        function render() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 배경 - 현실적인 도시 야경
+            ctx.save();
+            
+            // 별들
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 100; i++) {
+                const x = (i * 137.5 + game.camera.x * 0.05) % canvas.width;
+                const y = (i * 73.2) % (canvas.height / 2);
+                const size = Math.random() * 1.5;
+                ctx.globalAlpha = 0.3 + Math.random() * 0.7;
+                ctx.fillRect(x, y, size, size);
+            }
+            ctx.globalAlpha = 1;
+            
+            // 원거리 빌딩 (가장 어둡고 작음)
+            ctx.translate(-game.camera.x * 0.1, -game.camera.y * 0.1);
+            for (let i = 0; i < 30; i++) {
+                const x = i * 180 - (game.camera.x * 0.1) % 180;
+                const baseHeight = 150 + Math.sin(i * 1.7) * 80;
+                const height = baseHeight + Math.cos(Date.now() / 1000 + i) * 5;
+                
+                const gradient = ctx.createLinearGradient(x, canvas.height - height, x, canvas.height);
+                gradient.addColorStop(0, '#0f0f1e');
+                gradient.addColorStop(1, '#1a1a2e');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, canvas.height - height, 150, height);
+                
+                // 희미한 창문
+                ctx.fillStyle = 'rgba(255, 200, 100, 0.1)';
+                for (let j = 0; j < 8; j++) {
+                    for (let k = 0; k < 4; k++) {
+                        if (Math.random() > 0.7) {
+                            ctx.fillRect(x + 15 + k * 30, canvas.height - height + 15 + j * 18, 8, 8);
+                        }
+                    }
+                }
+            }
+            
+            ctx.restore();
+            ctx.save();
+            
+            // 중거리 빌딩
+            ctx.translate(-game.camera.x * 0.3, -game.camera.y * 0.2);
+            for (let i = 0; i < 25; i++) {
+                const x = i * 220 - (game.camera.x * 0.3) % 220;
+                const baseHeight = 200 + Math.sin(i * 2.1) * 120;
+                const height = baseHeight + Math.cos(Date.now() / 800 + i) * 8;
+                
+                const gradient = ctx.createLinearGradient(x, canvas.height - height, x, canvas.height);
+                gradient.addColorStop(0, '#16213e');
+                gradient.addColorStop(1, '#0f3460');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, canvas.height - height, 180, height);
+                
+                // 빌딩 외곽선
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, canvas.height - height, 180, height);
+                
+                // 창문 (더 밝음)
+                for (let j = 0; j < 12; j++) {
+                    for (let k = 0; k < 5; k++) {
+                        if (Math.random() > 0.4) {
+                            const windowY = canvas.height - height + 20 + j * 16;
+                            const windowX = x + 20 + k * 32;
+                            
+                            ctx.fillStyle = Math.random() > 0.8 ? 'rgba(255, 200, 100, 0.4)' : 'rgba(255, 220, 150, 0.25)';
+                            ctx.fillRect(windowX, windowY, 12, 12);
+                            
+                            // 창문 그림자
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                            ctx.fillRect(windowX, windowY + 10, 12, 2);
+                        }
+                    }
+                }
+                
+                // 안테나
+                if (i % 3 === 0) {
+                    ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 90, canvas.height - height);
+                    ctx.lineTo(x + 90, canvas.height - height - 30);
+                    ctx.stroke();
+                    
+                    // 안테나 불빛
+                    ctx.fillStyle = '#ff4444';
+                    ctx.beginPath();
+                    ctx.arc(x + 90, canvas.height - height - 30, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#ff4444';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+            
+            ctx.restore();
+            ctx.save();
+            
+            // 가까운 빌딩 (가장 밝고 디테일함)
+            ctx.translate(-game.camera.x * 0.5, -game.camera.y * 0.3);
+            for (let i = 0; i < 20; i++) {
+                const x = i * 250 - (game.camera.x * 0.5) % 250;
+                const baseHeight = 250 + Math.sin(i * 1.3) * 150;
+                const height = baseHeight + Math.cos(Date.now() / 600 + i) * 10;
+                
+                const gradient = ctx.createLinearGradient(x, canvas.height - height, x + 200, canvas.height);
+                gradient.addColorStop(0, '#1e3a5f');
+                gradient.addColorStop(0.5, '#1a1a3e');
+                gradient.addColorStop(1, '#0f0f2e');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, canvas.height - height, 200, height);
+                
+                // 빌딩 측면 (3D 효과)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.moveTo(x + 200, canvas.height - height);
+                ctx.lineTo(x + 220, canvas.height - height + 20);
+                ctx.lineTo(x + 220, canvas.height + 20);
+                ctx.lineTo(x + 200, canvas.height);
+                ctx.fill();
+                
+                // 창문 그리드
+                for (let j = 0; j < 15; j++) {
+                    for (let k = 0; k < 6; k++) {
+                        const rand = Math.random();
+                        if (rand > 0.3) {
+                            const windowY = canvas.height - height + 25 + j * 16;
+                            const windowX = x + 25 + k * 30;
+                            
+                            // 창문 배경
+                            ctx.fillStyle = 'rgba(20, 20, 40, 0.8)';
+                            ctx.fillRect(windowX, windowY, 15, 12);
+                            
+                            // 창문 불빛
+                            if (rand > 0.5) {
+                                const lightColor = rand > 0.85 ? 'rgba(100, 200, 255, 0.6)' : 'rgba(255, 220, 150, 0.5)';
+                                ctx.fillStyle = lightColor;
+                                ctx.fillRect(windowX + 1, windowY + 1, 13, 10);
+                                
+                                // 창문 반사
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                                ctx.fillRect(windowX + 1, windowY + 1, 6, 4);
+                            }
+                            
+                            // 창틀
+                            ctx.strokeStyle = 'rgba(100, 100, 120, 0.5)';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(windowX, windowY, 15, 12);
+                        }
+                    }
+                }
+                
+                // 네온 사인 (일부 빌딩)
+                if (i % 4 === 0) {
+                    const neonY = canvas.height - height + 50;
+                    const colors = ['#ff2a6d', '#05d9e8', '#f7ff00', '#00ff87'];
+                    const color = colors[i % colors.length];
+                    
+                    ctx.fillStyle = color;
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = color;
+                    ctx.fillRect(x + 30, neonY, 140, 20);
+                    ctx.shadowBlur = 0;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('CITY LIGHTS', x + 50, neonY + 14);
+                }
+                
+                // 옥상 디테일
+                ctx.fillStyle = '#2a2a3a';
+                ctx.fillRect(x, canvas.height - height, 200, 8);
+                ctx.fillStyle = '#3a3a4a';
+                ctx.fillRect(x + 10, canvas.height - height - 15, 30, 15);
+                ctx.fillRect(x + 160, canvas.height - height - 15, 30, 15);
+            }
+            
+            ctx.restore();
+
+            // 게임 오브젝트
+            ctx.save();
+            ctx.translate(-game.camera.x, -game.camera.y);
+            
+            // 파티클 먼저 그리기 (플레이어 뒤에)
+            game.particles.forEach(p => p.draw(ctx));
+
+            // 플랫폼 - 빌딩 옥상 스타일
+            for (const segment of game.segments) {
+                for (const platform of segment.platforms) {
+                    // 플랫폼 그림자
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.fillRect(platform.x + 5, platform.y + 5, platform.width, platform.height);
+                    
+                    // 플랫폼 메인
+                    const gradient = ctx.createLinearGradient(
+                        platform.x, platform.y,
+                        platform.x, platform.y + platform.height
+                    );
+                    gradient.addColorStop(0, '#636e72');
+                    gradient.addColorStop(1, '#2d3436');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // 상단 테두리 (하이라이트)
+                    ctx.fillStyle = '#95a5a6';
+                    ctx.fillRect(platform.x, platform.y, platform.width, 3);
+                    
+                    // 측면 디테일
+                    ctx.strokeStyle = '#4a4a4a';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < platform.width; i += 50) {
+                        ctx.beginPath();
+                        ctx.moveTo(platform.x + i, platform.y);
+                        ctx.lineTo(platform.x + i, platform.y + platform.height);
+                        ctx.stroke();
+                    }
+                    
+                    // 콘크리트 텍스처
+                    ctx.fillStyle = 'rgba(100, 100, 100, 0.1)';
+                    for (let i = 0; i < 10; i++) {
+                        const rx = platform.x + Math.random() * platform.width;
+                        const ry = platform.y + Math.random() * platform.height;
+                        ctx.fillRect(rx, ry, 2, 2);
+                    }
+                }
+
+                // 벽 - 빌딩 벽면 스타일
+                for (const wall of segment.walls) {
+                    // 벽 그림자
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                    ctx.fillRect(wall.x + 3, wall.y + 3, wall.width, wall.height);
+                    
+                    // 벽 메인
+                    const wallGradient = ctx.createLinearGradient(
+                        wall.x, wall.y,
+                        wall.x + wall.width, wall.y
+                    );
+                    wallGradient.addColorStop(0, '#4a4a4a');
+                    wallGradient.addColorStop(0.5, '#5a5a5a');
+                    wallGradient.addColorStop(1, '#3a3a3a');
+                    ctx.fillStyle = wallGradient;
+                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                    
+                    // 벽돌 패턴
+                    ctx.strokeStyle = '#2a2a2a';
+                    ctx.lineWidth = 1;
+                    for (let y = 0; y < wall.height; y += 20) {
+                        ctx.beginPath();
+                        ctx.moveTo(wall.x, wall.y + y);
+                        ctx.lineTo(wall.x + wall.width, wall.y + y);
+                        ctx.stroke();
+                        
+                        for (let x = 0; x < wall.width; x += 40) {
+                            ctx.beginPath();
+                            ctx.moveTo(wall.x + x + (y % 40 === 0 ? 20 : 0), wall.y + y);
+                            ctx.lineTo(wall.x + x + (y % 40 === 0 ? 20 : 0), wall.y + y + 20);
+                            ctx.stroke();
+                        }
+                    }
+                    
+                    // 하이라이트
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+                }
+
+                // 줄 - 현실적인 로프
+                for (const rope of segment.ropes) {
+                    // 로프 그림자
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(rope.x + 2, rope.y + 2);
+                    ctx.lineTo(rope.x + 2, rope.y + rope.length + 2);
+                    ctx.stroke();
+                    
+                    // 로프 메인 (꼬인 효과)
+                    const ropeSegments = 20;
+                    const segmentLength = rope.length / ropeSegments;
+                    
+                    for (let i = 0; i < ropeSegments; i++) {
+                        const y1 = rope.y + i * segmentLength;
+                        const y2 = rope.y + (i + 1) * segmentLength;
+                        const offset = Math.sin(i * 0.5) * 1.5;
+                        
+                        const gradient = ctx.createLinearGradient(
+                            rope.x - 2, y1,
+                            rope.x + 2, y1
+                        );
+                        gradient.addColorStop(0, '#5d4037');
+                        gradient.addColorStop(0.5, '#8d6e63');
+                        gradient.addColorStop(1, '#5d4037');
+                        
+                        ctx.strokeStyle = gradient;
+                        ctx.lineWidth = 5;
+                        ctx.beginPath();
+                        ctx.moveTo(rope.x + offset, y1);
+                        ctx.lineTo(rope.x - offset, y2);
+                        ctx.stroke();
+                    }
+                    
+                    // 상단 고정 고리
+                    ctx.fillStyle = '#424242';
+                    ctx.beginPath();
+                    ctx.arc(rope.x, rope.y - 5, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#616161';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(rope.x, rope.y - 5, 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // 고리 하이라이트
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(rope.x - 2, rope.y - 7, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 플레이어 - 스틱맨 파쿠르 러너
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            
+            // 글로우 효과
+            if (items.jetBooster.active) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff6600';
+            } else if (items.speedBoost.active) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00ff00';
+            } else if (player.grappleMode) {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#888888';
+            }
+            
+            const time = Date.now() / 100;
+            const runCycle = Math.sin(time) * 0.3;
+            
+            // 색상 설정
+            let playerColor = '#2d3436';
+            if (items.jetBooster.active) playerColor = '#ff6600';
+            else if (items.speedBoost.active) playerColor = '#00ff00';
+            else if (player.grappleMode) playerColor = '#888888';
+            
+            ctx.strokeStyle = playerColor;
+            ctx.fillStyle = playerColor;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            if (player.isSliding) {
+                // 슬라이딩 자세
+                ctx.rotate(-Math.PI / 6);
+                
+                // 머리
+                ctx.beginPath();
+                ctx.arc(-8, -5, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 몸통
+                ctx.beginPath();
+                ctx.moveTo(-8, -1);
+                ctx.lineTo(5, 0);
+                ctx.stroke();
+                
+                // 앞 다리 (펴짐)
+                ctx.beginPath();
+                ctx.moveTo(5, 0);
+                ctx.lineTo(12, 3);
+                ctx.stroke();
+                
+                // 뒷 다리 (구부림)
+                ctx.beginPath();
+                ctx.moveTo(-2, 0);
+                ctx.lineTo(-6, 4);
+                ctx.stroke();
+                
+                // 앞 팔
+                ctx.beginPath();
+                ctx.moveTo(-3, -1);
+                ctx.lineTo(2, 2);
+                ctx.stroke();
+                
+                // 뒷 팔
+                ctx.beginPath();
+                ctx.moveTo(-5, -1);
+                ctx.lineTo(-8, 3);
+                ctx.stroke();
+            } else if (!player.isGrounded) {
+                // 공중 자세
+                ctx.rotate(player.vy * 0.02);
+                
+                // 머리
+                ctx.beginPath();
+                ctx.arc(0, -10, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 몸통
+                ctx.beginPath();
+                ctx.moveTo(0, -5);
+                ctx.lineTo(0, 5);
+                ctx.stroke();
+                
+                // 팔 (균형잡기)
+                ctx.beginPath();
+                ctx.moveTo(0, -3);
+                ctx.lineTo(-6, -1);
+                ctx.lineTo(-8, -4);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, -3);
+                ctx.lineTo(6, -1);
+                ctx.lineTo(8, -4);
+                ctx.stroke();
+                
+                // 다리 (구부림)
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.lineTo(-3, 10);
+                ctx.lineTo(-2, 14);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.lineTo(3, 10);
+                ctx.lineTo(2, 14);
+                ctx.stroke();
+            } else {
+                // 달리기 자세
+                // 머리
+                ctx.beginPath();
+                ctx.arc(0, -10, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 몸통
+                ctx.beginPath();
+                ctx.moveTo(0, -5);
+                ctx.lineTo(0, 5);
+                ctx.stroke();
+                
+                // 팔 (교차 움직임)
+                ctx.beginPath();
+                ctx.moveTo(0, -3);
+                ctx.lineTo(-4 + runCycle * 3, 2);
+                ctx.lineTo(-5 + runCycle * 4, 8);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, -3);
+                ctx.lineTo(4 - runCycle * 3, 2);
+                ctx.lineTo(5 - runCycle * 4, 8);
+                ctx.stroke();
+                
+                // 다리 (교차 움직임)
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.lineTo(-2 + runCycle * 4, 10);
+                ctx.lineTo(-3 + runCycle * 5, 15);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 5);
+                ctx.lineTo(2 - runCycle * 4, 10);
+                ctx.lineTo(3 - runCycle * 5, 15);
+                ctx.stroke();
+            }
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+            
+            // 사슬팔 렌더링 (기어 소유 시에만)
+            if (items.grappleGear.owned) {
+                if (player.grappleActive) {
+                    // 사슬팔 체인
+                    ctx.strokeStyle = '#666666';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(player.x + player.width / 2, player.y + player.height / 2);
+                    ctx.lineTo(player.grappleTargetX, player.grappleTargetY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    // 사슬팔 끝 (갈고리)
+                    ctx.fillStyle = '#444444';
+                    ctx.beginPath();
+                    ctx.arc(player.grappleTargetX, player.grappleTargetY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#888888';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (player.grappleMode) {
+                    // 조준선 (사슬팔 모드일 때)
+                    const aimX = mouseX;
+                    const aimY = mouseY;
+                    const playerCenterX = player.x + player.width / 2;
+                    const playerCenterY = player.y + player.height / 2;
+                    const dx = aimX - playerCenterX;
+                    const dy = aimY - playerCenterY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance <= player.grappleMaxLength) {
+                        ctx.strokeStyle = 'rgba(100, 255, 100, 0.5)';
+                    } else {
+                        ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
+                    }
+                    
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([10, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(playerCenterX, playerCenterY);
+                    ctx.lineTo(aimX, aimY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    // 조준 십자선
+                    ctx.strokeStyle = distance <= player.grappleMaxLength ? 'rgba(100, 255, 100, 0.8)' : 'rgba(255, 100, 100, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(aimX - 10, aimY);
+                    ctx.lineTo(aimX + 10, aimY);
+                    ctx.moveTo(aimX, aimY - 10);
+                    ctx.lineTo(aimX, aimY + 10);
+                    ctx.stroke();
+                    
+                    // 사정거리 표시
+                    ctx.beginPath();
+                    ctx.arc(playerCenterX, playerCenterY, player.grappleMaxLength, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(150, 150, 150, 0.1)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+
+            // UI 업데이트
+            document.getElementById('distance').textContent = game.distance;
+            
+            // 높이 계산 (기준 높이에서 플레이어까지의 거리, 역방향이므로 음수 처리)
+            const height = Math.max(0, Math.floor((game.groundLevel - player.y) / 10));
+            document.getElementById('height').textContent = height;
+            
+            document.getElementById('gold').textContent = game.gold;
+            document.getElementById('hp').textContent = Math.max(0, Math.floor(game.hp));
+            
+            // 기어 상태 표시
+            const grappleStatus = document.getElementById('grappleStatus');
+            
+            // 낙법 상태 표시 (최우선)
+            if (player.rollTimer > 0) {
+                grappleStatus.textContent = '🤸 낙법 준비!';
+                grappleStatus.style.color = '#00ff00';
+            }
+            // 사슬팔 모드 상태 (기어 소유 시에만)
+            else if (items.grappleGear.owned && player.grappleMode) {
+                if (player.grappleActive) {
+                    grappleStatus.textContent = '🔗 사슬팔 활성 (Shift: 버스트)';
+                    grappleStatus.style.color = '#4a9eff';
+                } else {
+                    grappleStatus.textContent = '🎯 사슬팔 모드 (클릭: 발사 | F: 취소)';
+                    grappleStatus.style.color = '#888';
+                }
+            } else {
+                grappleStatus.textContent = '';
+            }
+        }
+
+        // 상점 초기화
+        function initShop() {
+            const shopItems = document.getElementById('shopItems');
+            shopItems.innerHTML = `
+                <div style="color: #ffdd44; margin-bottom: 20px; font-size: 18px;">
+                    보유 골드: <span id="shopGold">${game.gold}</span>G
+                </div>
+            `;
+            
+            for (const [key, item] of Object.entries(items)) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item' + (item.owned ? ' owned' : '');
+                itemDiv.innerHTML = `
+                    <h3>${item.name} ${item.owned ? '✓ 보유중' : ''}</h3>
+                    <p>${item.description.split('\n').join('<br>')}</p>
+                    <p class="price">${item.owned ? '구매완료' : item.price + 'G'}</p>
+                `;
+                
+                if (!item.owned) {
+                    itemDiv.onclick = () => buyItem(key);
+                }
+                
+                shopItems.appendChild(itemDiv);
+            }
+        }
+
+        // 아이템 구매
+        function buyItem(itemKey) {
+            const item = items[itemKey];
+            if (game.gold >= item.price && !item.owned) {
+                game.gold -= item.price;
+                item.owned = true;
+                initShop();
+                updateItemBar();
+            }
+        }
+
+        // 아이템 바 업데이트
+        function updateItemBar() {
+            const itemBar = document.getElementById('itemBar');
+            itemBar.innerHTML = '';
+            
+            let index = 1;
+            for (const [key, item] of Object.entries(items)) {
+                if (item.owned) {
+                    const button = document.createElement('div');
+                    button.className = 'item-button';
+                    
+                    const now = Date.now();
+                    
+                    // 기어 타입 (사슬팔, 폭발 점퍼, 그래비티 컨트롤러)
+                    if (key === 'grappleGear') {
+                        if (player.grappleMode) {
+                            button.classList.add('active');
+                            button.textContent = `F: ${item.name} (활성)`;
+                        } else {
+                            button.textContent = `F: ${item.name}`;
+                        }
+                    } else if (key === 'explosiveJumper') {
+                        // 쿨타임 없음, 항상 사용 가능
+                        button.textContent = `H: ${item.name}`;
+                    } else if (key === 'gravityController') {
+                        // G 키 홀드 표시
+                        if (game.keys['g']) {
+                            button.classList.add('active');
+                            button.textContent = `G: ${item.name} (활성)`;
+                        } else {
+                            button.textContent = `G: ${item.name}`;
+                        }
+                    }
+                    // 소모품 타입 (스피드 부스트, 제트 부스터)
+                    else if (item.active) {
+                        button.classList.add('active');
+                        const remaining = Math.ceil((item.activeUntil - now) / 1000);
+                        button.textContent = `${index}: ${item.name} (${remaining}s)`;
+                    } else if (now - item.lastUsed < item.cooldown + item.duration) {
+                        button.classList.add('cooldown');
+                        const cooldownRemaining = Math.ceil((item.lastUsed + item.cooldown + item.duration - now) / 1000);
+                        button.textContent = `${index}: ${item.name} (${cooldownRemaining}s)`;
+                    } else {
+                        button.textContent = `${index}: ${item.name}`;
+                    }
+                    
+                    if (key !== 'grappleGear' && key !== 'explosiveJumper' && key !== 'gravityController') {
+                        button.onclick = () => useItem(key);
+                    }
+                    
+                    itemBar.appendChild(button);
+                    
+                    if (key !== 'grappleGear' && key !== 'explosiveJumper' && key !== 'gravityController') {
+                        index++;
+                    }
+                }
+            }
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            updatePhysics();
+            render();
+            updateItemBar();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 초기화
+        initShop();
+        gameLoop();
+        
+        // 상점 드래그 기능
+        let isDraggingShop = false;
+        let shopOffsetX = 0;
+        let shopOffsetY = 0;
+        
+        const shop = document.getElementById('shop');
+        const shopHeader = document.getElementById('shopHeader');
+        const shopClose = document.getElementById('shopClose');
+        
+        shopHeader.addEventListener('mousedown', (e) => {
+            isDraggingShop = true;
+            const rect = shop.getBoundingClientRect();
+            shopOffsetX = e.clientX - rect.left;
+            shopOffsetY = e.clientY - rect.top;
+            shopHeader.style.cursor = 'grabbing';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingShop) {
+                const x = e.clientX - shopOffsetX;
+                const y = e.clientY - shopOffsetY;
+                
+                shop.style.left = x + 'px';
+                shop.style.top = y + 'px';
+                shop.style.transform = 'none';
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isDraggingShop) {
+                isDraggingShop = false;
+                shopHeader.style.cursor = 'move';
+            }
+        });
+        
+        // 닫기 버튼
+        shopClose.addEventListener('click', () => {
+            game.isPaused = false;
+            shop.classList.remove('show');
+        });
+
+        // 리사이즈
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
